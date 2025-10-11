@@ -1,0 +1,142 @@
+<template>
+  <div>
+    <h1>Chat Bot</h1>
+    <input v-model="chatting" placeholder="Type message" @keyup.enter="sendMessage" />
+    <button @click="sendMessage">Send</button>
+  </div>
+
+  <div v-for="(msg, index) in chatHistory" :key="index" class="chat-line">
+    <p><strong>You:</strong> {{ msg.question }}</p>
+    <p><strong>AI:</strong> {{ msg.answer }}</p>
+    <hr>
+  </div>
+</template>
+
+<script setup>
+import { ref } from 'vue'
+import OpenAI from 'openai'
+
+const openai = new OpenAI({
+  apiKey: import.meta.env.VITE_OPENAI_API_KEY,
+  dangerouslyAllowBrowser: true
+})
+
+const chatting = ref('')
+const reply   = ref('')
+const chatHistory = ref([])
+
+
+// ✅  ⬇⬇⬇  updated sendMessage with memory
+function sendMessage() {
+  if (!chatting.value) return
+
+  // last 15 messages ko model-friendly format me convert
+  const contextMessages = chatHistory.value
+    .slice(-15)
+    .flatMap(m => [
+      { role: 'user', content: m.question },
+      { role: 'assistant', content: m.answer }
+    ])
+  
+  // naya user message push karne se pehle context + new msg bhejo
+  openai.chat.completions.create({
+    model: 'gpt-4o-mini',
+    messages: [
+      ...contextMessages,
+      { role: 'user', content: chatting.value }
+    ]
+  })
+  .then(res => {
+    console.log('FULL RESPONSE:', res)
+
+    reply.value = res.choices?.[0]?.message?.content || 'No reply'
+
+    chatHistory.value.push({
+      question: chatting.value,
+      answer: reply.value
+    })
+
+    chatting.value = ''
+  })
+  .catch(err => {
+    reply.value = 'Error: ' + err.message
+    console.error(err)
+  })
+}
+</script>
+
+<style>
+/* ----- Page base ----- */
+body {
+  background: #000000;
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+/* ----- Main wrapper ----- */
+div {
+  max-width: 600px;
+  margin: 30px auto;
+  padding: 20px;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+/* ----- Heading ----- */
+h1 {
+  text-align: center;
+  color: #000000;
+  margin-bottom: 20px;
+}
+
+/* ----- Input area ----- */
+input[type="text"] {
+  width: 75%;
+  padding: 10px;
+  border: 1px solid #efefef;
+  border-radius: 20px;
+  outline: none;
+  font-size: 14px;
+}
+
+button {
+  padding: 10px 18px;
+  margin-left: 5px;
+  border: none;
+  border-radius: 20px;
+  background-color: #000000;
+  color: #ffefef;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+button:hover {
+  background-color: #dbdbdb;
+}
+
+/* ----- Chat lines ----- */
+.chat-line {
+  margin-top: 15px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: #ffffff;
+  border-left: 4px solid #000000;
+}
+
+.chat-line p {
+  margin: 5px 0;
+  line-height: 1.4;
+}
+
+.chat-line strong {
+  color: #ff0000;
+}
+
+/* ----- Scrollbar if history is long ----- */
+.chat-container {
+  max-height: 400px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+</style>
