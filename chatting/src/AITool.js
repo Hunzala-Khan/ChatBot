@@ -1,4 +1,4 @@
-import { schoolDB } from './aschool_DB.js'
+import { schoolDB } from './assets/school_DB.js';
 const AITool = {
   getStudentInformationByName(studentName) {
     const student = schoolDB.students.find(s => s.name.toLowerCase().includes(studentName.toLowerCase()));
