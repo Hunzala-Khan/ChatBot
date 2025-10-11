@@ -68,7 +68,7 @@ function sendMessage() {
 <style>
 /* ----- Page base ----- */
 body {
-  background: #000000;
+  background: #4d0000;
   font-family: Arial, sans-serif;
   margin: 0;
   padding: 0;
@@ -79,9 +79,9 @@ div {
   max-width: 600px;
   margin: 30px auto;
   padding: 20px;
-  background: #fff;
+  background: #ffffff;
   border-radius: 10px;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.145);
 }
 
 /* ----- Heading ----- */
@@ -95,7 +95,7 @@ h1 {
 input[type="text"] {
   width: 75%;
   padding: 10px;
-  border: 1px solid #efefef;
+  border: 1px solid #ffffff;
   border-radius: 20px;
   outline: none;
   font-size: 14px;
@@ -106,13 +106,13 @@ button {
   margin-left: 5px;
   border: none;
   border-radius: 20px;
-  background-color: #000000;
-  color: #ffefef;
+  background-color: #9000ff;
+  color: #000000;
   cursor: pointer;
   transition: background 0.3s;
 }
 button:hover {
-  background-color: #dbdbdb;
+  background-color: #000000;
 }
 
 /* ----- Chat lines ----- */
@@ -120,7 +120,7 @@ button:hover {
   margin-top: 15px;
   padding: 12px 16px;
   border-radius: 12px;
-  background: #ffffff;
+  background: hsl(0, 0%, 0%);
   border-left: 4px solid #000000;
 }
 
