@@ -15,6 +15,7 @@
 <script setup>
 import { ref } from 'vue'
 import OpenAI from 'openai'
+import AITool from './AITool.js'  // Import the AITool module
 
 const openai = new OpenAI({
   apiKey: import.meta.env.VITE_OPENAI_API_KEY,
