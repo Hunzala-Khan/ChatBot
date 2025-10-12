@@ -1,20 +1,25 @@
 <template>
   <div>
     <h1>Chat Bot</h1>
-    <input v-model="chatting" placeholder="Type message" @keyup.enter="sendMessage" />
+    <input
+      v-model="chatting"
+      placeholder="Type message"
+      @keyup.enter="sendMessage"
+    />
     <button @click="sendMessage">Send</button>
   </div>
 
   <div v-for="(msg, index) in chatHistory" :key="index" class="chat-line">
     <p><strong>You:</strong> {{ msg.question }}</p>
     <p><strong>AI:</strong> {{ msg.answer }}</p>
-    <hr>
+    <hr />
   </div>
 </template>
 
 <script setup>
 import { ref } from 'vue'
 import OpenAI from 'openai'
+import AITool, { toolsList } from './AI_Tool.js' // ensure correct filename & path
 
 const openai = new OpenAI({
   apiKey: import.meta.env.VITE_OPENAI_API_KEY,
@@ -22,51 +27,110 @@ const openai = new OpenAI({
 })
 
 const chatting = ref('')
-const reply   = ref('')
 const chatHistory = ref([])
 
+// ✅ Keywords to decide when to use AITool
+const infoKeywords = ['information', 'detail', 'attendance', 'subject', 'student', 'teacher', 'employee', 'class']
 
-// ✅  ⬇⬇⬇  updated sendMessage with memory
-function sendMessage() {
+async function sendMessage() {
   if (!chatting.value) return
+  const userMessage = chatting.value
+  chatting.value = ''
 
-  // last 15 messages ko model-friendly format me convert
-  const contextMessages = chatHistory.value
-    .slice(-15)
-    .flatMap(m => [
-      { role: 'user', content: m.question },
-      { role: 'assistant', content: m.answer }
-    ])
-  
-  // naya user message push karne se pehle context + new msg bhejo
-  openai.chat.completions.create({
-    model: 'gpt-4o-mini',
-    messages: [
-      ...contextMessages,
-      { role: 'user', content: chatting.value }
-    ]
-  })
-  .then(res => {
-    console.log('FULL RESPONSE:', res)
+  try {
+    // 🔍 Check if user is asking for info-related query
+    const lowerMsg = userMessage.toLowerCase()
+    const shouldUseAITool = infoKeywords.some(word => lowerMsg.includes(word))
 
-    reply.value = res.choices?.[0]?.message?.content || 'No reply'
+    let aiResponse = ''
 
+    if (shouldUseAITool) {
+      // 🧠 Try matching tool if info-related
+      const toolDescriptions = toolsList
+        .map(t => `${t.name}: ${t.description}`)
+        .join('\n')
+
+      const toolChoiceRes = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: `Tumhara kaam hai user ke message se yeh decide karna ke kis function kaam karega.
+Yeh available tools hain:
+${toolDescriptions}
+
+Return sirf us function ka exact name likho (e.g. "getStudentInformationByName")
+Agar koi match nahi milta toh likho "none".`
+          },
+          { role: 'user', content: userMessage }
+        ]
+      })
+
+      const chosenToolName =
+        toolChoiceRes.choices?.[0]?.message?.content?.trim() || 'none'
+
+      const matchedTool = toolsList.find(
+        t => t.name.toLowerCase() === chosenToolName.toLowerCase()
+      )
+
+      if (matchedTool) {
+        // Argument extraction
+        const argRes = await openai.chat.completions.create({
+          model: 'gpt-4o-mini',
+          messages: [
+            {
+              role: 'system',
+              content: `User message: "${userMessage}".
+Tumhe bas ek argument return karna hai (jaise student ka naam, id ya date)
+jo function "${matchedTool.name}" ko dena chahiye.
+Return sirf argument ka text, extra kuch nahi.`
+            }
+          ]
+        })
+
+        const argument = argRes.choices?.[0]?.message?.content?.trim() || ''
+        const result = matchedTool.func(argument)
+        aiResponse = result
+          ? JSON.stringify(result, null, 2)
+          : 'Kuch result nahi mila.'
+      } else {
+        aiResponse = 'Mujhe koi relevant function nahi mila.'
+      }
+    } else {
+      // 💬 GPT normal conversation mode
+      const chatRes = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content:
+              'Tum ek friendly AI assistant ho jo user se normal baat karta hai.'
+          },
+          { role: 'user', content: userMessage }
+        ]
+      })
+
+      aiResponse =
+        chatRes.choices?.[0]?.message?.content ||
+        'Sorry, mujhe samajh nahi aya.'
+    }
+
+    // 🗂 Add to chat history
     chatHistory.value.push({
-      question: chatting.value,
-      answer: reply.value
+      question: userMessage,
+      answer: aiResponse
     })
-
-    chatting.value = ''
-  })
-  .catch(err => {
-    reply.value = 'Error: ' + err.message
+  } catch (err) {
     console.error(err)
-  })
+    chatHistory.value.push({
+      question: userMessage,
+      answer: 'Error: ' + err.message
+    })
+  }
 }
 </script>
 
 <style>
-/* --- (same CSS as your version) --- */
 body {
   background: #4d0000;
   font-family: Arial, sans-serif;
@@ -86,7 +150,7 @@ h1 {
   color: #000000;
   margin-bottom: 20px;
 }
-input[type="text"] {
+input[type='text'] {
   width: 75%;
   padding: 10px;
   border: 1px solid #ffffff;
