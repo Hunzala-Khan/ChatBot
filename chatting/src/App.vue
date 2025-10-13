@@ -1,25 +1,30 @@
 <template>
-  <div>
+  <div class="chatbot">
     <h1>Chat Bot</h1>
-    <input
-      v-model="chatting"
-      placeholder="Type message"
-      @keyup.enter="sendMessage"
-    />
-    <button @click="sendMessage">Send</button>
-  </div>
 
-  <div v-for="(msg, index) in chatHistory" :key="index" class="chat-line">
-    <p><strong>You:</strong> {{ msg.question }}</p>
-    <p><strong>AI:</strong> {{ msg.answer }}</p>
-    <hr />
+    <div class="chat-box">
+      <div v-for="(msg, index) in chatHistory" :key="index" class="chat-line">
+        <p><strong>You:</strong> {{ msg.question }}</p>
+        <p><strong>AI:</strong> {{ msg.answer }}</p>
+        <hr />
+      </div>
+    </div>
+
+    <div class="input-area">
+      <input
+        v-model="chatting"
+        placeholder="Type message..."
+        @keyup.enter="sendMessage"
+      />
+      <button @click="sendMessage">Send</button>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref } from 'vue'
 import OpenAI from 'openai'
-import AITool, { toolsList } from './AI_Tool.js' // ensure correct filename & path
+import AITools, { toolsList } from './AITools.js' // ✅ correct filename & path
 
 const openai = new OpenAI({
   apiKey: import.meta.env.VITE_OPENAI_API_KEY,
@@ -30,7 +35,16 @@ const chatting = ref('')
 const chatHistory = ref([])
 
 // ✅ Keywords to decide when to use AITool
-const infoKeywords = ['information', 'detail', 'attendance', 'subject', 'student', 'teacher', 'employee', 'class']
+const infoKeywords = [
+  'information',
+  'detail',
+  'attendance',
+  'subject',
+  'student',
+  'teacher',
+  'employee',
+  'class'
+]
 
 async function sendMessage() {
   if (!chatting.value) return
@@ -74,21 +88,27 @@ Agar koi match nahi milta toh likho "none".`
       )
 
       if (matchedTool) {
-        // Argument extraction
+        // ✅ Argument extraction (improved)
         const argRes = await openai.chat.completions.create({
           model: 'gpt-4o-mini',
           messages: [
             {
               role: 'system',
               content: `User message: "${userMessage}".
-Tumhe bas ek argument return karna hai (jaise student ka naam, id ya date)
-jo function "${matchedTool.name}" ko dena chahiye.
-Return sirf argument ka text, extra kuch nahi.`
+Extract sirf main argument value — agar message me number ho to sirf number likho (e.g. "2"),
+agar name ho to sirf name likho (e.g. "Ali").
+Return kuch aur nahi, sirf clean argument.`
             }
           ]
         })
 
-        const argument = argRes.choices?.[0]?.message?.content?.trim() || ''
+        let argument = argRes.choices?.[0]?.message?.content?.trim() || ''
+
+        // ✅ Smart cleaning for numeric or text arguments
+        if (/(\d+)/.test(argument)) {
+          argument = Number(argument.match(/(\d+)/)[0])
+        }
+
         const result = matchedTool.func(argument)
         aiResponse = result
           ? JSON.stringify(result, null, 2)
@@ -131,58 +151,48 @@ Return sirf argument ka text, extra kuch nahi.`
 </script>
 
 <style>
-body {
-  background: #4d0000;
-  font-family: Arial, sans-serif;
-  margin: 0;
-  padding: 0;
-}
-div {
-  max-width: 600px;
-  margin: 30px auto;
-  padding: 20px;
-  background: #ffffff;
-  border-radius: 10px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.145);
-}
 h1 {
   text-align: center;
   color: #000000;
-  margin-bottom: 20px;
 }
-input[type='text'] {
-  width: 75%;
+.chatbot {
+  width: 420px;
+  margin: 30px auto;
+  padding: 20px;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 0 10px #ffffff;
+}
+.chat-box {
+  background: rgb(0, 0, 0);
   padding: 10px;
-  border: 1px solid #ffffff;
-  border-radius: 20px;
-  outline: none;
-  font-size: 14px;
-}
-button {
-  padding: 10px 18px;
-  margin-left: 5px;
-  border: none;
-  border-radius: 20px;
-  background-color: #9000ff;
-  color: #000000;
-  cursor: pointer;
-  transition: background 0.3s;
-}
-button:hover {
-  background-color: #000000;
+  border-radius: 10px;
+  height: 300px;
+  overflow-y: auto;
+  margin-bottom: 10px;
 }
 .chat-line {
-  margin-top: 15px;
-  padding: 12px 16px;
-  border-radius: 12px;
-  background: hsl(0, 0%, 0%);
-  border-left: 4px solid #000000;
+  margin-bottom: 8px;
 }
-.chat-line p {
-  margin: 5px 0;
-  line-height: 1.4;
+.input-area {
+  display: flex;
+  gap: 10px;
 }
-.chat-line strong {
-  color: #ff0000;
+input {
+  flex: 1;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #000000;
+}
+button {
+  padding: 10px 15px;
+  border: none;
+  background: #3498db;
+  color: white;
+  border-radius: 8px;
+  cursor: pointer;
+}
+button:hover {
+  background: #2980b9;
 }
 </style>
