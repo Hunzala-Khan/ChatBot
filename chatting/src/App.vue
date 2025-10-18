@@ -33,6 +33,7 @@ const openai = new OpenAI({
 
 const chatting = ref('')
 const chatHistory = ref([])
+const reply = ref('')
 
 // ✅ Keywords to decide when to use AITool
 const infoKeywords = [
